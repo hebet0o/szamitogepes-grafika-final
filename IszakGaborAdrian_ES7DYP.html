@@ -1,0 +1,482 @@
+<!-- Filmjelenet: Halálos iramban 7 - végjelenet (Say goodbye to Paul Walker)-->
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset=utf-8>
+    <title>Iszak Gábor Adrián_ES7DYP Scene</title>
+    <style>
+        body { margin: 0; overflow: hidden; height: 100vh;}
+        #info {
+            position: absolute;
+            color: white;
+            top: 0;
+            width: 50%;
+            left: 100px;
+            z-index: 100;
+            display:block;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="info" class="night-mode">
+    <ul>
+        <li>Készitette: Iszak Gábor Adrián | ES7DYP</li>
+        <li>Szak: Programtervező Informatikus</li>
+        <li>Tanév: 2023 Őszi félév</li>
+
+    </ul>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "./js-r154/build/three.module.js",
+            "trackballcontrols": "./js-r154/examples/jsm/controls/TrackballControls.js",
+             "lil-gui": "./js-r154/examples/jsm/libs/lil-gui.module.min.js",
+             "stats": "./js-r154/examples/jsm/libs/stats.module.js",
+             "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/loaders/",
+             "MTLLoader": "./js-r154/examples/jsm/loaders/MTLLoader.js"
+        }
+    }
+</script>
+<script type="module">
+    import * as THREE from 'three';
+    import { TrackballControls } from 'trackballcontrols';
+    import { GLTFLoader } from 'three/addons/GLTFLoader.js';
+
+    // Globális változók
+    let WIDTH, HEIGHT, aspectRatio;
+    let renderer;
+    let scene, camera;
+    let stats, controls;
+    ////////OBJECT3D//////
+    let geometryHolder_white = new THREE.Object3D();
+    let geometryHolder_black = new THREE.Object3D();
+
+    let helperGeometry = new THREE.SphereGeometry( 2, 20, 10 );
+    let helperMaterial = new THREE.MeshBasicMaterial( { color: 0x000000, transparent: true} )
+    let helperMesh = new THREE.Mesh( helperGeometry, helperMaterial );
+    helperMesh.position.set( -27.05, 0, 27.05);
+
+    let foliageHolder = new THREE.Object3D();
+
+    let axesHelper_sphere = new THREE.AxesHelper(10);
+    helperMesh.add(axesHelper_sphere);
+    //Blender objektumok beolvasása
+    const loader = new GLTFLoader();
+
+    loader.load( 'assets/supra_final.glb', function ( gltf ) {
+        gltf.scene.position.set(-3.5,2,8.5);
+        gltf.scene.scale.set(2.5,2.5,2.5);
+        gltf.scene.rotation.y = (Math.PI / 180) * -90;
+        geometryHolder_white.add( gltf.scene );
+
+    }, undefined, function ( error ) {
+
+        console.error( error );
+
+    } );
+    const loader_1 = new GLTFLoader();
+
+    loader_1.load( 'assets/charger.glb', function ( gltf ) {
+        gltf.scene.position.set(10,2.5,8);
+        gltf.scene.scale.set(3,3,3);
+        gltf.scene.rotation.y = (Math.PI / 180) * 90;
+        geometryHolder_black.add( gltf.scene );
+
+    }, undefined, function ( error ) {
+
+        console.error( error );
+
+    } );
+
+    init();
+
+
+    function init() {
+        // Böngésző ablakméret lekérése és méretarány
+        HEIGHT = window.innerHeight;
+        WIDTH = window.innerWidth;
+        aspectRatio = WIDTH / HEIGHT;
+
+        // Renderer létrehozása
+        renderer = new THREE.WebGLRenderer( { antialias: true } );
+        renderer.setSize( WIDTH, HEIGHT );
+        renderer.setClearColor( 0x000000 );
+        document.body.appendChild( renderer.domElement );
+        renderer.shadowMap.enabled = true;
+
+        // Színtér létrehozása
+        scene = new THREE.Scene();
+
+        // Kamera létrehozása és paramétereinek beállítása
+        camera = new THREE.PerspectiveCamera( 60, aspectRatio, 0.1, 1000 );
+        camera.position.set( 0, 45, 25 );
+        camera.lookAt( scene.position.x, scene.position.y, scene.position.z );
+
+        // Talaj
+        let groundGeometry = new THREE.PlaneGeometry( 54.1, 54.1 );
+        let groundTexture = new THREE.TextureLoader().load("planetexture.jpg"); //A talajtextúra saját
+        let groundMaterial = new THREE.MeshPhongMaterial( {
+            map: groundTexture,
+            side: THREE.DoubleSide
+        } );
+        let groundMesh = new THREE.Mesh( groundGeometry, groundMaterial );
+        groundMesh.rotation.x = -1.0 * THREE.MathUtils.degToRad( 90 );
+        scene.add( groundMesh );
+        groundMesh.receiveShadow = true;
+        groundMesh.castShadow = false;
+        let axesHelper = new THREE.AxesHelper(20);
+        scene.add(axesHelper);
+
+        //SCENE ELEMEK
+        // Ut keszitese
+        let roadGeometry
+        let roadMaterial;
+        let roadMesh;
+
+        function createRoad(width,height, depth, posX, posY, posZ, rot) {
+            roadGeometry = new THREE.BoxGeometry( width, height, depth );
+            roadMaterial = new THREE.MeshPhongMaterial( {color: 0x808080, wireframe: false} );
+            roadMesh = new THREE.Mesh( roadGeometry, roadMaterial );
+            roadMesh.position.set( posX, posY, posZ );
+            roadMesh.rotation.y = rot;
+            scene.add( roadMesh );
+            //Élkiemelés
+            let egBox = new THREE.EdgesGeometry( roadGeometry);
+            let egBoxLines = new THREE.LineSegments( egBox, new THREE.LineBasicMaterial( { color: 0x5a5a5a, linewidth: 2 } ) );
+            roadMesh.add( egBoxLines );
+        }
+
+
+        function createCone(size1,size2,size3,posX, posZ,color,rot){
+            const geometry = new THREE.ConeGeometry( size1, size2, size3 );
+            const material = new THREE.MeshPhongMaterial( {color: color} );
+            const cone = new THREE.Mesh(geometry, material );
+            cone.rotation.z = Math.PI/2;
+            cone.position.set(posX, 0.1, posZ);
+            cone.rotation.y = Math.PI/180 *  rot;
+            scene.add( cone );
+            //Élkiemelés
+            let egBox = new THREE.EdgesGeometry( geometry);
+            let egBoxLines = new THREE.LineSegments( egBox, new THREE.LineBasicMaterial( { color: 0x5a5a5a, linewidth: 2 } ) );
+            cone.add( egBoxLines );
+        }
+
+
+        //Egyenes ut elhelyezése
+        createRoad(5,0.5,54.1,10,0.5,0,0);
+        //"Kanyargós" ut elhelyezése
+        createRoad(5, 0.5, 20, 5, 0.5,15,(Math.PI / 180) * 30);
+        createRoad(5, 0.5, 15, -5, 0.5,2.4,(Math.PI / 180) * 50);
+        createRoad(5, 0.5, 17.6, -18, 0.5,-4.9,(Math.PI / 180) * 70);
+        createCone(1.2,5,2,-26.5, -8,0x808080,75);
+        createCone(6,5,2,6,8,0xf2d2a9,215);
+
+        //AUTOK LETREHOZASA ES ELHELYEZESE
+        let sLight = new THREE.SpotLight( 0xffffff, 2, 20, Math.PI/10);
+        sLight.position.set( -5, -0.5, -20 );
+        sLight.castShadow = true;
+        sLight.shadow.mapSize.width = 2048;
+        sLight.shadow.mapSize.height = 2048;
+
+        let sLightHelper = new THREE.SpotLightHelper( sLight);
+        scene.add( sLightHelper );
+
+        let black = 0x0;
+        let white = 0xffffff;
+        let gray = 0x5a5a5a;
+
+        function createBox(width,height, depth, posX, posY, posZ, color, rot,car) {
+            let boxGeometry = new THREE.BoxGeometry( width, height, depth );
+            if(car === 1){
+                let boxTexture = new THREE.TextureLoader().load("cartexture.jpg");
+                let boxMaterial = new THREE.MeshPhongMaterial( {
+                    map:boxTexture
+                })
+                let boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+                boxMesh.position.set( posX, posY, posZ );
+                boxMesh.rotation.y = Math.PI / 180 * rot;
+                //Árnyékolás
+                boxMesh.castShadow = true;
+                boxMesh.receiveShadow = false;
+                //geometryHolder_white.add( boxMesh );
+                //Élkiemelés
+                let egBox = new THREE.EdgesGeometry( boxGeometry);
+                let egBoxLines = new THREE.LineSegments( egBox, new THREE.LineBasicMaterial( { color: 0x00, linewidth: 2} ) );
+                boxMesh.add( egBoxLines );
+            }
+            else{
+                let boxMaterial = new THREE.MeshPhongMaterial({color: color});
+                let boxMesh = new THREE.Mesh( boxGeometry, boxMaterial );
+                boxMesh.position.set( posX, posY, posZ );
+                boxMesh.rotation.y = Math.PI / 180 * rot;
+                //Árnyékolás
+                boxMesh.castShadow = true;
+                boxMesh.receiveShadow = false;
+                //geometryHolder_black.add(boxMesh);
+                //Élkiemelés
+                let egBox = new THREE.EdgesGeometry( boxGeometry);
+                let egBoxLines = new THREE.LineSegments( egBox, new THREE.LineBasicMaterial( { color: 0x00, linewidth: 2} ) );
+                boxMesh.add( egBoxLines );
+            }
+
+
+
+        }
+
+        function createCylinder(radiusTop, radiusBottom, height, posX,posY,posZ, rotationAmountX, rotationAmountY,color,rotationAmountZ, light,car) {
+            if(light === 1) {
+                let geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height);
+                let material = new THREE.MeshPhongMaterial({color: color});
+                let cylinder = new THREE.Mesh(geometry, material);
+                cylinder.position.set(posX, posY, posZ);
+                cylinder.rotation.x = rotationAmountX;
+                cylinder.rotation.y = rotationAmountY;
+                cylinder.rotation.z = rotationAmountZ;
+                let axesHelper = new THREE.AxesHelper(2);
+                cylinder.add(axesHelper);
+                //Árnyékolás
+                cylinder.castShadow = true;
+                cylinder.receiveShadow = false;
+                if (car === 1) {
+                    //geometryHolder_white.add(cylinder);
+                } else if (car === 0) {
+                    //geometryHolder_black.add(cylinder);
+                } else {
+                    scene.add(cylinder);
+                }
+
+                //Élkiemelés
+                let egBox = new THREE.EdgesGeometry(geometry);
+                let egBoxLines = new THREE.LineSegments(egBox, new THREE.LineBasicMaterial({
+                    color: 0x5a5a5a,
+                    linewidth: 2
+                }));
+                cylinder.add(egBoxLines);
+                //Lámpa
+            }
+
+        }
+
+        //Fehér autó (Paul Walker) A kerekek helyzetei az ültetett autók miatt ilyenek
+        function createCar1(posX, posZ, rot) {
+            createCylinder(1,1,0.5,posX - 1,1.8,posZ-2.5, Math.PI / 2 ,0, black, (Math.PI / 180) * -rot,1,1) //bal1
+            createCylinder(1,1,0.5,posX + 3.2,1.8,posZ+1,Math.PI / 2 ,0, black, (Math.PI / 180) *  -rot,1,1) //bal2
+            createCylinder(1,1,0.5,posX + 5.2,1.8,posZ-1.3,Math.PI / 2 ,0, black, (Math.PI / 180) *  -rot,1,1) //jobb2
+            createCylinder(1,1,0.5,posX+0.8,1.8,posZ-5,Math.PI / 2 ,0, black, (Math.PI / 180) *  -rot,1,1) //jobb1
+            createCylinder(0.2,0.2,0.2,-6.2, 2, 0,0, (Math.PI/ 180) * 135, 0xfcba03, Math.PI/2,1,1,1) //lámpajobb1
+            createCylinder(0.2,0.2,0.2,-7.2, 2, 1.2,0, (Math.PI/ 180) * 135, 0xfcba03, Math.PI/2,1,1,1) //lámpabal1
+            createCylinder(0.2,0.2,0.2,1.5, 2, 6.5,0, (Math.PI/ 180) * 325, 0xfcba03, Math.PI/2 ,2,1,1)     //lámpajobb2
+            createCylinder(0.2,0.2,0.2,0.2, 2, 8,0, (Math.PI/ 180) * 325, 0xfcba03, Math.PI/2 ,2,1,1) //lámpabal2
+            createBox(10,2,3,posX + 2,2,posZ - 2,white, rot,1);
+            createBox(6,1,3,posX + 2.5,3.5,posZ -1.5, white, rot,1);
+        }
+
+        createCar1(-5,6, 320);
+
+        //Fekete autó (Vin Diesel) A kerekek helyzetei az ültetett autók miatt ilyenek
+        function createCar2(posX, posZ) {
+            createCylinder(1,1,0.5,posX - 1.5,1.8,posZ - 2, Math.PI / 2,0,black,Math.PI / 2,1,0) //bal1
+            createCylinder(1,1,0.5,posX - 1.5,1.8,posZ + 2,Math.PI / 2,0, black,Math.PI / 2,1,0) //bal2
+            createCylinder(1,1,0.5,posX + 1.5,1.8,posZ + 2,Math.PI / 2,0, black,Math.PI / 2,1,0) //jobb2
+            createCylinder(1,1,0.5,posX + 1.5,1.8,posZ - 2,Math.PI / 2,0,black,Math.PI / 2,1,0) //jobb1
+            createCylinder(0.2,0.2,0.2,posX - 0.7, 2, posZ - 5.5,0, Math.PI/ 2, 0xfcba03, Math.PI/2 ,1,0) //lámpajobb1
+            createCylinder(0.2,0.2,0.2,posX + 0.7, 2,posZ - 5.5,0, Math.PI/ 2, 0xfcba03, Math.PI/2 ,1,0) //lámpabal1
+            createCylinder(0.2,0.2,0.2,posX - 0.7, 2, posZ + 3.5,0, (Math.PI/ 2) * 3, 0xfcba03, Math.PI/2 * 225,2,0) //lámpajobb2
+            createCylinder(0.2,0.2,0.2,posX + 0.7, 2,posZ + 3.5,0, (Math.PI/ 2) * 3, 0xfcba03, Math.PI/2  * 225,2,0) //lámpabal2
+            createBox(9,2,3,posX,2.5,posZ-1,gray,90,2);
+            createBox(6,1,3,posX,4,posZ, gray,90,2);
+        }
+
+        geometryHolder_white.position.x = 36;
+        geometryHolder_white.position.z = -10;
+        geometryHolder_white.rotation.y = (Math.PI / 180) * 360;
+
+        geometryHolder_black.position.x = 0;
+        geometryHolder_black.position.z = 12;
+
+        scene.add(geometryHolder_white);
+        scene.add(geometryHolder_black);
+        helperMesh.add(geometryHolder_white);
+        scene.add(helperMesh);
+
+
+        createCar2(10,0);
+        //FÁK LÉTREHOZÁSA
+
+        function createTree(posX, posZ, foliageRandomizer,color){
+            const trunkGeometry = new THREE.ConeGeometry(1, 5, 15);
+            const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            //Árnyékolás
+            trunk.castShadow = true;
+            trunk.receiveShadow = false;
+            scene.add(trunk);
+            const foliageGeometry = new THREE.IcosahedronGeometry(foliageRandomizer);
+            const foliageMaterial = new THREE.MeshPhongMaterial({ color: color });
+            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+            foliage.position.set(posX, 6, posZ);
+            trunk.position.set(posX,2.7,posZ);
+            /*Skálázások később a createTreeLine metódusban találhatóak, az ott deklarált
+            folRand változó felel a lombkoronák nagyságáért.
+            */
+            foliage.castShadow = true;
+            foliage.receiveShadow = false;
+            foliageHolder.add(foliage);
+            //Élkiemelés
+            let egBox = new THREE.EdgesGeometry(trunkGeometry);
+            let egBoxLines = new THREE.LineSegments( egBox, new THREE.LineBasicMaterial( { color: 0x614710, linewidth: 2} ) );
+            trunk.add( egBoxLines );
+            //Élkiemelés
+            let egBox2 = new THREE.EdgesGeometry(foliageGeometry);
+            let egBoxLines2 = new THREE.LineSegments( egBox2, new THREE.LineBasicMaterial( { color: 0xFFC445, linewidth: 2} ) );
+            foliage.add(egBoxLines2);
+        }
+        //Fák elhelyezése
+
+        function createTreeLine(fromX, toX, rowZ){
+            let cord = fromX;
+            const color = [0xd99959, 0xb87a3d, 0xb6a53f ];
+            while(cord <= toX){
+                let folRand = Math.random() * 2.7 + 1.7;
+                let szin = Math.floor(Math.random() * 3);
+                createTree(cord,rowZ,folRand,color[szin]);
+                cord+=Math.floor(Math.random() * 5 + 3);
+            }
+        }
+        function placeTree(fromX, toX, rowZ, toZ, cut){
+            let cord = fromX;
+            let z = rowZ;
+            let x = toX;
+            while(z >= toZ){
+                createTreeLine(cord,x,z);
+                z -= 7;
+                if(cut === true){
+                    x -= 7;
+                }
+            }
+        }
+
+        placeTree(-26,1 ,26.1,3  ,true);
+        placeTree(15 ,25,26.1,-24,false);
+        placeTree(-26.1,2,-12,-24,false);
+        createTreeLine(-5,3,-5);
+        scene.add(foliageHolder);
+
+
+        //Tábla létrehozás, elhelyezés
+        const signGeometry = new THREE.BoxGeometry(2,0.5,2);
+        const signMaterial = new THREE.MeshBasicMaterial({ color: 0xffc40c, wireframe: false});
+        const signMesh = new THREE.Mesh(signGeometry, signMaterial);
+        signMesh.rotation.x = Math.PI / 2;
+        signMesh.position.set(6,3,10);
+        //Élkiemelés
+        let egBox = new THREE.EdgesGeometry(signGeometry);
+        let egBoxLines = new THREE.LineSegments( egBox, new THREE.LineBasicMaterial( { color: 0x614710, linewidth: 2} ) );
+        signMesh.add( egBoxLines );
+        scene.add(signMesh);
+
+        let dLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+        dLight.position.set( 0, 0, 30 );
+        dLight.target = signMesh;
+        scene.add( dLight );
+
+
+        createCylinder(0.2,0.2,2,6,1.2,10,0,0,black,0,5);
+
+        //Fény hozzáadása
+        //pointlight
+        const pointLight = new THREE.PointLight( 0xfae4c3, 1.8, 300 );
+        pointLight.position.set( -30, 25, 30);
+        scene.add( pointLight );
+        pointLight.castShadow = true;
+        pointLight.lookAt(0,0,0)
+
+        pointLight.shadow.mapSize.width = 2048;
+        pointLight.shadow.mapSize.height = 2048;
+
+        const ambientPoint = new THREE.AmbientLight( 0x291a03 );
+        pointLight.add(ambientPoint);
+
+        let pLightHelper = new THREE.CameraHelper( pointLight.shadow.camera);
+        pointLight.add( pLightHelper );
+        
+        //Autólámpák
+        function createLight(base, shift, target, color) {
+            let light = new THREE.SpotLight(color, 1, 40, THREE.MathUtils.degToRad(30), 0.25);
+            light.position.set(shift, 0.5, 0);
+            base.add(light);
+            light.target = target;
+            let pLightHelper = new THREE.PointLightHelper( light );
+            light.add(pLightHelper);
+        }
+
+        geometryHolder_white.position.set(36,-0.2,-11);
+        geometryHolder_white.rotation.y = (Math.PI / 180) * 10  ;
+
+
+        // Az ablak későbbi átméretezése esetén visszahívható függvény megadása
+        window.addEventListener( 'resize', handleWindowResize, false );
+
+        // Kamera vezérlés
+        controls = new TrackballControls( camera, renderer.domElement );
+        controls.rotateSpeed = 5.0;
+        controls.panSpeed = 1.0;
+
+        animate();
+    }
+
+    function handleWindowResize() {
+        // Az ablak átméretezése esetén a kamera vetítési paraméterek újraszámolása
+        HEIGHT = window.innerHeight;
+        WIDTH = window.innerWidth;
+        console.log( 'WIDTH=' + WIDTH + '; HEIGHT=' + HEIGHT );
+        renderer.setSize( WIDTH, HEIGHT );
+        aspectRatio = WIDTH / HEIGHT;
+        camera.aspect = aspectRatio;
+        camera.updateProjectionMatrix();
+        render();
+    }
+    function animate() {
+        helperMesh.rotation.y += 0.005;
+        geometryHolder_white.rotation.y += 0.0002;
+        foliageHolder.scale.x += 0.0001;
+        foliageHolder.scale.z += 0.0001;
+        if(foliageHolder.scale.x >= 1.03){
+            while(foliageHolder.scale.x >= 1){
+                foliageHolder.scale.x -= 0.0001;
+                foliageHolder.scale.z -= 0.0001;
+            }
+
+        }
+        if(helperMesh.rotation.y >= 1.1){ //x = -27.05
+            geometryHolder_white.position.set(36,-0.2,-10);
+            geometryHolder_white.rotation.y = (Math.PI / 180) * 360;
+            helperMesh.rotation.y = (Math.PI / 180);
+            geometryHolder_black.position.set(0,0,12);
+        }
+
+        geometryHolder_black.position.z -= 0.15;
+        // Maximálisan 60 FPS-t biztosít a rendszer.
+        requestAnimationFrame( animate );
+        // Kamera vezérlés
+        controls.update();
+        render();
+
+    }
+
+    function render() {
+        // scene 3D színtér képe a camera kamera szemszögéből.
+        renderer.render( scene, camera );
+    }
+
+</script>
+</body>
+</html>
