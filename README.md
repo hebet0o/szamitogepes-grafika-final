@@ -54,3 +54,9 @@ Textúra (1 pont)
 
 Legalább 2 db objektum egymástól független, értelmes textúrázása (épület, jármű, égitest, szereplők stb.).
 
+# Futtatás
+
+1. Git repository klónolása
+2. Mappa megnyitása WebStormban
+3. A .html fájl futtatása
+
